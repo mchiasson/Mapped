@@ -1,0 +1,9 @@
+[submodule "thirdparty/SDL"]
+	path = thirdparty/SDL
+	url = https://github.com/SDL-mirror/SDL.git
+[submodule "thirdparty/assimp"]
+	path = thirdparty/assimp
+	url = https://github.com/assimp/assimp.git
+[submodule "thirdparty/imgui"]
+	path = thirdparty/imgui
+	url = https://github.com/ocornut/imgui.git
