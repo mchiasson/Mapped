@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8.0)
+cmake_minimum_required(VERSION 3.0.0)
 
 # Define LINUX
 if (UNIX AND NOT APPLE)
@@ -31,6 +31,22 @@ endif()
 # Project files
 list(APPEND srcfiles
     ./src/main.cpp
+    ./src/editor.h
+    ./src/editor.cpp
+    ./src/globals.h
+    ./src/globals.cpp
+    ./src/menuBar.h
+    ./src/menuBar.cpp
+    ./src/properties.h
+    ./src/properties.cpp
+    ./src/view.h
+    ./src/view.cpp
+    ./src/models.h
+    ./src/models.cpp
+    ./src/layers.h
+    ./src/layers.cpp
+    ./src/toolBar.h
+    ./src/toolBar.cpp
 )
 
 list(APPEND includes PUBLIC ./src/)
