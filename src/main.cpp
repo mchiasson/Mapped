@@ -18,11 +18,15 @@
 
 bool done = false;
 
+#if defined(WIN32)
 int CALLBACK WinMain(
     _In_ HINSTANCE hInstance,
     _In_ HINSTANCE hPrevInstance,
     _In_ LPSTR     lpCmdLine,
     _In_ int       nCmdShow)
+#else
+int main()
+#endif
 {
     // Setup SDL
     if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) != 0)
