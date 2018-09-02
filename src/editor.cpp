@@ -9,28 +9,31 @@
 
 #include <stdlib.h>
 
-void editor_update()
+void editor_updateGUI()
 {
     // Some UI styling
     auto& style = ImGui::GetStyle();
-    style.WindowRounding = 0.0f;
+    //style.WindowRounding = 0.0f;
 
-    menuBar_update();
-    toolBar_update();
-    properties_update();
-    layers_update();
-    models_update();
+    menuBar_updateGUI();
+    toolBar_updateGUI();
+    properties_updateGUI();
+    layers_updateGUI();
+    models_updateGUI();
+
+    // Prepare the data
+    
 
     if (isFullView)
     {
-        view_update(ViewType::Perspective, ViewLayout::Full, 0);
+        view_updateGUI(ViewType::Perspective, ViewLayout::Full, 0);
     }
     else
     {
-        view_update(ViewType::Perspective, ViewLayout::Four, 0);
-        view_update(ViewType::Top, ViewLayout::Four, 1);
-        view_update(ViewType::Left, ViewLayout::Four, 2);
-        view_update(ViewType::Front, ViewLayout::Four, 3);
+        view_updateGUI(ViewType::Perspective, ViewLayout::Four, 0);
+        view_updateGUI(ViewType::Top, ViewLayout::Four, 1);
+        view_updateGUI(ViewType::Left, ViewLayout::Four, 2);
+        view_updateGUI(ViewType::Front, ViewLayout::Four, 3);
     }
 }
 

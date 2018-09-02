@@ -1,1 +1,1 @@
-void menuBar_update();
+void menuBar_updateGUI();

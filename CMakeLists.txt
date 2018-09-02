@@ -29,27 +29,14 @@ if (WIN32)
 endif()
 
 # Project files
-list(APPEND srcfiles
-    ./src/main.cpp
-    ./src/editor.h
-    ./src/editor.cpp
-    ./src/globals.h
-    ./src/globals.cpp
-    ./src/menuBar.h
-    ./src/menuBar.cpp
-    ./src/properties.h
-    ./src/properties.cpp
-    ./src/view.h
-    ./src/view.cpp
-    ./src/models.h
-    ./src/models.cpp
-    ./src/layers.h
-    ./src/layers.cpp
-    ./src/toolBar.h
-    ./src/toolBar.cpp
+file(GLOB srcfiles
+    ./src/*.*
+)
+file(GLOB systemsFiles
+    ./src/systems/*.*
 )
 
-list(APPEND includes PUBLIC ./src/)
+list(APPEND includes PUBLIC ./src/ ./src/systems/)
 
 # Dear imgui
 list(APPEND includes PUBLIC ./thirdparty/imgui/ ./thirdparty/imgui/examples/)
@@ -92,7 +79,8 @@ list(APPEND srcthirdparty ./thirdparty/gl3w/src/gl3w.c)
 # MapEditor.exe, use WinMain on Windows
 source_group("thirdparty" FILES ${srcthirdparty})
 source_group("editor" FILES ${srcfiles})
-add_executable(MapEditor WIN32 ${srcfiles} ${srcthirdparty})
+source_group("systems" FILES ${systemsFiles})
+add_executable(MapEditor WIN32 ${srcfiles} ${systemsFiles} ${srcthirdparty})
 
 # Lib/Headers
 target_include_directories(MapEditor ${includes})

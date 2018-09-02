@@ -1,1 +1,1 @@
-void models_update();
+void models_updateGUI();

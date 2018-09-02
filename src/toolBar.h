@@ -1,1 +1,1 @@
-void toolBar_update();
+void toolBar_updateGUI();

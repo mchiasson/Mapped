@@ -1,1 +1,1 @@
-void properties_update();
+void properties_updateGUI();

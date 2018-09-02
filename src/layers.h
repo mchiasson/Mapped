@@ -1,1 +1,1 @@
-void layers_update();
+void layers_updateGUI();

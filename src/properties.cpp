@@ -5,7 +5,7 @@ float pos[3] = { 0, 0, 0 };
 float rot[3] = { 0, 0, 0 };
 float scale[3] = { 1, 1, 1 };
 
-void properties_update()
+void properties_updateGUI()
 {
     if (!isLeftPanelVisible) return;
 

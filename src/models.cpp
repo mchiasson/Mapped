@@ -1,7 +1,7 @@
 #include "globals.h"
 #include <imgui.h>
 
-void models_update()
+void models_updateGUI()
 {
     if (!isRightPanelVisible) return;
 

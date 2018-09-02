@@ -15,6 +15,7 @@
 //#include <glad/glad.h>
 
 #include "globals.h"
+#include "editor.h"
 
 bool done = false;
 
@@ -73,8 +74,8 @@ int main()
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     // Setup style
-    ImGui::StyleColorsDark();
-    //ImGui::StyleColorsClassic();
+    //ImGui::StyleColorsDark();
+    ImGui::StyleColorsClassic();
 
     // Load Fonts
     // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them. 
@@ -93,7 +94,7 @@ int main()
 
     bool show_demo_window = true;
     bool show_another_window = false;
-    ImVec4 clear_color = ImVec4(0.05f, 0.01f, 0.04f, 1.00f);
+    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     // Main loop
     while (!done)
@@ -123,8 +124,7 @@ int main()
         ImGui_ImplSDL2_NewFrame(window);
         ImGui::NewFrame();
 
-        void editor_update();
-        editor_update();
+        editor_updateGUI();
 
         //// 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
         //if (show_demo_window)
@@ -170,6 +170,10 @@ int main()
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        // Draw viewports
+
+        // Swap
         SDL_GL_SwapWindow(window);
     }
 

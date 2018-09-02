@@ -3,7 +3,7 @@
 
 void editor_quit();
 
-void menuBar_update()
+void menuBar_updateGUI()
 {
     if (ImGui::BeginMainMenuBar())
     {

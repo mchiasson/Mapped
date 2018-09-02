@@ -1,7 +1,7 @@
 #include "globals.h"
 #include <imgui.h>
 
-void toolBar_update()
+void toolBar_updateGUI()
 {
     ImGui::SetNextWindowPos({ 0, 20 });
     ImGui::SetNextWindowSize({ (float)width, 32 });

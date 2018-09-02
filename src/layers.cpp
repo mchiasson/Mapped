@@ -1,7 +1,7 @@
 #include "globals.h"
 #include <imgui.h>
 
-void layers_update()
+void layers_updateGUI()
 {
     if (!isRightPanelVisible) return;
 

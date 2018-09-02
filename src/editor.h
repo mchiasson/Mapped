@@ -1,2 +1,2 @@
-void editor_update();
+void editor_updateGUI();
 void editor_quit();

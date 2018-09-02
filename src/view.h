@@ -15,4 +15,4 @@ enum class ViewLayout : int
     Full
 };
 
-void view_update(ViewType type, ViewLayout layout, int viewIndex);
+void view_updateGUI(ViewType type, ViewLayout layout, int viewIndex);
