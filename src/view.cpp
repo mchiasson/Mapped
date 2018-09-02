@@ -40,17 +40,23 @@ static const int MAX_ZOOM_LEVELS = sizeof(ZOOM_LEVELS) / sizeof(float);
 
 struct ViewInfo
 {
+    float position[3] = { 0, 0, 0 };
+    int zoomLevel = 18;
+    float angleX = 0.0f;
+    float angleZ = 0.0f;
     ViewType type;
     float x, y;
     float w, h;
     int index;
-    float position[3] = { 0, 0, 0 };
-    int zoomLevel = 18;
-    float angleX = 0.0f;
-    float angleY = 0.0f;
 };
 
-ViewInfo viewInfos[MAX_VIEWS];
+ViewInfo viewInfos[MAX_VIEWS] = {
+    { { -2, -2, 2 }, 15, 30, 45 },
+    { { 0, 0, 0 }, 18, 0, 0 },
+    { { 0, 0, 0 }, 18, 0, 0 },
+    { { 0, 0, 0 }, 18, 0, 0 }
+};
+
 int draggingView = -1;
 
 const char* VIEW_TYPE_TO_NAME[] = {
@@ -75,6 +81,14 @@ struct ShaderGrid2D
     GLint attrib_position = 0;
     GLint attrib_color = 0;
 } shader_grid2D;
+
+struct ShaderGrid3D
+{
+    GLuint program = 0;
+    GLint uniform_projMtx = 0;
+    GLint attrib_position = 0;
+    GLint attrib_color = 0;
+} shader_grid3D;
 
 struct GridMesh
 {
@@ -328,6 +342,28 @@ static void initialize()
     shader_grid2D.uniform_projMtx = glGetUniformLocation(shader_grid2D.program, "ProjMtx");
     shader_grid2D.attrib_position = glGetAttribLocation(shader_grid2D.program, "Position");
     shader_grid2D.attrib_color = glGetAttribLocation(shader_grid2D.program, "Color");
+    
+    // 3D grid
+    shader_grid3D.program = createShaderProgram(
+        "uniform mat4 ProjMtx;\n"
+        "in vec2 Position;\n"
+        "in vec4 Color;\n"
+        "out vec4 Frag_Color;\n"
+        "void main()\n"
+        "{\n"
+        "    Frag_Color = Color;\n"
+        "    gl_Position = ProjMtx * vec4(Position.xy,0,1);\n"
+        "}\n"
+        ,
+        "in vec4 Frag_Color;\n"
+        "out vec4 Out_Color;\n"
+        "void main()\n"
+        "{\n"
+        "    Out_Color = Frag_Color;\n"
+        "}\n");
+    shader_grid3D.uniform_projMtx = glGetUniformLocation(shader_grid3D.program, "ProjMtx");
+    shader_grid3D.attrib_position = glGetAttribLocation(shader_grid3D.program, "Position");
+    shader_grid3D.attrib_color = glGetAttribLocation(shader_grid3D.program, "Color");
 
     static const float GRID_COLOR0[4] = { 0.1f, 0.15f, 0.2f, 1 };
     static const float GRID_COLOR1[4] = { 0.2f, 0.3f, 0.4f, 1 };
@@ -506,6 +542,127 @@ static void initialize()
     //glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(gridIndices), (const GLvoid*)gridIndices, GL_STATIC_DRAW);
 }
 
+#define TORAD 0.01745329251994329576923690768489f
+
+static void createViewMatrix(const float position[3], float angleX, float angleZ, float out[4][4])
+{
+    // Normalized direction
+    float R2[3] = {
+        -std::sinf(angleZ * TORAD) * std::cosf(angleX * TORAD),
+        -std::cosf(angleZ * TORAD) * std::cosf(angleX * TORAD),
+        std::sinf(angleX * TORAD)
+    };
+
+    float R0[3] = {
+        -1 * R2[1],
+        1 * R2[0],
+        0
+    };
+    float len = std::sqrtf(R0[0] * R0[0] + R0[1] * R0[1]);
+    R0[0] /= len;
+    R0[1] /= len;
+
+    float R1[3] = {
+        R2[1] * R0[2] - R2[2] * R0[1],
+        R2[2] * R0[0] - R2[0] * R0[2],
+        R2[0] * R0[1] - R2[1] * R0[0]
+    };
+
+    auto D0 = R0[0] * -position[0] + R0[1] * -position[1] + R0[2] * -position[2];
+    auto D1 = R1[0] * -position[0] + R1[1] * -position[1] + R1[2] * -position[2];
+    auto D2 = R2[0] * -position[0] + R2[1] * -position[1] + R2[2] * -position[2];
+
+    out[0][0] = R0[0];
+    out[0][1] = R1[0];
+    out[0][2] = R2[0];
+    out[0][3] = 0.0f;
+
+    out[1][0] = R0[1];
+    out[1][1] = R1[1];
+    out[1][2] = R2[1];
+    out[1][3] = 0.0f;
+
+    out[2][0] = R0[2];
+    out[2][1] = R1[2];
+    out[2][2] = R2[2];
+    out[2][3] = 0.0f;
+
+    out[3][0] = D0;
+    out[3][1] = D1;
+    out[3][2] = D2;
+    out[3][3] = 1.0f;
+}
+
+static void createPerspectiveFieldOfView(float fov, float aspectRatio, float nearPlane, float farPlane, float out[4][4])
+{
+    float CosFov = std::cos(0.5f * fov * TORAD);
+    float SinFov = std::sin(0.5f * fov * TORAD);
+
+    float Height = CosFov / SinFov;
+    float Width = Height / aspectRatio;
+    float fRange = farPlane / (nearPlane - farPlane);
+
+    out[0][0] = Width;
+    out[0][1] = 0.0f;
+    out[0][2] = 0.0f;
+    out[0][3] = 0.0f;
+
+    out[1][0] = 0.0f;
+    out[1][1] = Height;
+    out[1][2] = 0.0f;
+    out[1][3] = 0.0f;
+
+    out[2][0] = 0.0f;
+    out[2][1] = 0.0f;
+    out[2][2] = fRange;
+    out[2][3] = -1.0f;
+
+    out[3][0] = 0.0f;
+    out[3][1] = 0.0f;
+    out[3][2] = fRange * nearPlane;
+    out[3][3] = 0.0f;
+}
+
+static void mulMatrix(float a[4][4], float b[4][4], float out[4][4])
+{
+    memcpy(out, a, sizeof(out) * 16);
+    // Cache the invariants in registers
+    float x = out[0][0];
+    float y = out[0][1];
+    float z = out[0][2];
+    float w = out[0][3];
+    // Perform the operation on the first row
+    out[0][0] = (b[0][0] * x) + (b[1][0] * y) + (b[2][0] * z) + (b[3][0] * w);
+    out[0][1] = (b[0][1] * x) + (b[1][1] * y) + (b[2][1] * z) + (b[3][1] * w);
+    out[0][2] = (b[0][2] * x) + (b[1][2] * y) + (b[2][2] * z) + (b[3][2] * w);
+    out[0][3] = (b[0][3] * x) + (b[1][3] * y) + (b[2][3] * z) + (b[3][3] * w);
+    // Repeat for all the other rows
+    x = out[1][0];
+    y = out[1][1];
+    z = out[1][2];
+    w = out[1][3];
+    out[1][0] = (b[0][0] * x) + (b[1][0] * y) + (b[2][0] * z) + (b[3][0] * w);
+    out[1][1] = (b[0][1] * x) + (b[1][1] * y) + (b[2][1] * z) + (b[3][1] * w);
+    out[1][2] = (b[0][2] * x) + (b[1][2] * y) + (b[2][2] * z) + (b[3][2] * w);
+    out[1][3] = (b[0][3] * x) + (b[1][3] * y) + (b[2][3] * z) + (b[3][3] * w);
+    x = out[2][0];
+    y = out[2][1];
+    z = out[2][2];
+    w = out[2][3];
+    out[2][0] = (b[0][0] * x) + (b[1][0] * y) + (b[2][0] * z) + (b[3][0] * w);
+    out[2][1] = (b[0][1] * x) + (b[1][1] * y) + (b[2][1] * z) + (b[3][1] * w);
+    out[2][2] = (b[0][2] * x) + (b[1][2] * y) + (b[2][2] * z) + (b[3][2] * w);
+    out[2][3] = (b[0][3] * x) + (b[1][3] * y) + (b[2][3] * z) + (b[3][3] * w);
+    x = out[3][0];
+    y = out[3][1];
+    z = out[3][2];
+    w = out[3][3];
+    out[3][0] = (b[0][0] * x) + (b[1][0] * y) + (b[2][0] * z) + (b[3][0] * w);
+    out[3][1] = (b[0][1] * x) + (b[1][1] * y) + (b[2][1] * z) + (b[3][1] * w);
+    out[3][2] = (b[0][2] * x) + (b[1][2] * y) + (b[2][2] * z) + (b[3][2] * w);
+    out[3][3] = (b[0][3] * x) + (b[1][3] * y) + (b[2][3] * z) + (b[3][3] * w);
+}
+
 static void viewDrawCallback(const ImDrawList* parent_list, const ImDrawCmd* cmd)
 {
     auto pViewInfo = (ViewInfo*)cmd->UserCallbackData;
@@ -527,14 +684,35 @@ static void viewDrawCallback(const ImDrawList* parent_list, const ImDrawCmd* cmd
         (GLsizei)(cmd->ClipRect.z - cmd->ClipRect.x),
         (GLsizei)(cmd->ClipRect.w - cmd->ClipRect.y));
 
+    float W = cmd->ClipRect.z - cmd->ClipRect.x;
+    float H = cmd->ClipRect.w - cmd->ClipRect.y;
+
     if (pViewInfo->type == ViewType::Perspective)
     {
+        float viewMat[4][4];
+        float projMat[4][4];
+        float viewProjMat[4][4];
+
+        createViewMatrix(pViewInfo->position, pViewInfo->angleX, pViewInfo->angleZ, viewMat);
+        createPerspectiveFieldOfView(90, W / H, 0.1f, 1000.0f, projMat);
+        mulMatrix(viewMat, projMat, viewProjMat);
+
+        glUseProgram(shader_grid3D.program);
+        glUniformMatrix4fv(shader_grid3D.uniform_projMtx, 1, GL_FALSE, &viewProjMat[0][0]);
+
+        // Zoomed-in grid
+        glBindVertexArray(mesh_grid1.vao);
+        glBindBuffer(GL_ARRAY_BUFFER, mesh_grid1.vbo);
+        glDrawArrays(GL_LINES, 0, GRID_2D_SIZE * 2 * 2);
+
+        //// Absolute 0 guides
+        //glBindVertexArray(mesh_grid0.vao);
+        //glBindBuffer(GL_ARRAY_BUFFER, mesh_grid0.vbo);
+        //glDrawArrays(GL_LINES, 0, GRID_2D_SIZE * 2 * 2);
     }
     else
     {
         // 2D drawing
-        float W = cmd->ClipRect.z - cmd->ClipRect.x;
-        float H = cmd->ClipRect.w - cmd->ClipRect.y;
         float L = 0;
         float R = cmd->ClipRect.z - cmd->ClipRect.x;
         float T = 0;

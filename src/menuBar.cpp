@@ -7,6 +7,10 @@ void menuBar_updateGUI()
 {
     if (ImGui::BeginMainMenuBar())
     {
+        const char* activityIndicator[] = { "/", "-", "\\", "|" };
+        static int indicatorIndex = 0;
+        indicatorIndex = (indicatorIndex + 1) % (sizeof(activityIndicator) / sizeof(char*));
+        ImGui::Text(activityIndicator[indicatorIndex]);
         if (ImGui::BeginMenu("File"))
         {
             if (ImGui::MenuItem("Exit", "ALT+F4"))
