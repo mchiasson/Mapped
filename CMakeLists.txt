@@ -76,6 +76,20 @@ list(APPEND libs assimp)
 list(APPEND includes PUBLIC ./thirdparty/gl3w/include/)
 list(APPEND srcthirdparty ./thirdparty/gl3w/src/gl3w.c)
 
+# jsoncpp
+list(APPEND includes PUBLIC ./thirdparty/jsoncpp/include/)
+list(APPEND srcthirdparty
+    ./thirdparty/jsoncpp/src/lib_json/json_reader.cpp
+    ./thirdparty/jsoncpp/src/lib_json/json_tool.h
+    ./thirdparty/jsoncpp/src/lib_json/json_value.cpp
+    ./thirdparty/jsoncpp/src/lib_json/json_valueiterator.inl
+    ./thirdparty/jsoncpp/src/lib_json/json_writer.cpp
+)
+
+# tinyfiledialogs
+list(APPEND includes PUBLIC ./thirdparty/tinyfiledialogs/)
+list(APPEND srcthirdparty ./thirdparty/tinyfiledialogs/tinyfiledialogs.c)
+
 # MapEditor.exe, use WinMain on Windows
 source_group("thirdparty" FILES ${srcthirdparty})
 source_group("editor" FILES ${srcfiles})

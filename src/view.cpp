@@ -9,7 +9,6 @@
 #include <SDL.h>
 
 // Defs
-#define MAX_VIEWS 4
 #define GRID_2D_SIZE 101
 #define GRIDMESH_MAX 4
 
@@ -43,28 +42,6 @@ static const float ZOOM_LEVELS[] = {
 };
 static const int MAX_ZOOM_LEVELS = sizeof(ZOOM_LEVELS) / sizeof(float);
 
-struct ViewInfo
-{
-    float position[3] = { 0, 0, 0 };
-    int zoomLevel = 18;
-    float angleX = 0.0f;
-    float angleZ = 0.0f;
-    ViewType type;
-    float x, y;
-    float w, h;
-    int index;
-};
-
-const char* VIEW_TYPE_TO_NAME[] = {
-    "Perspective",
-    "Top",
-    "Left",
-    "Right",
-    "Bottom",
-    "Front",
-    "Back"
-};
-
 struct ShaderGrid2D
 {
     GLuint program = 0;
@@ -94,18 +71,29 @@ struct Grid2DVertex
     float color[4];
 };
 
-// Vars
-GridMesh gridMeshes[GRIDMESH_MAX];
+// Private vars
+static GridMesh gridMeshes[GRIDMESH_MAX];
+static int draggingView = -1;
+static bool initialized = false;
+static float viewPosOnDragStart[2] = { 0, 0 };
+static int dragMouseX, dragMouseY;
+
+// Public vars
+const char* VIEW_TYPE_TO_NAME[] = {
+    "perspective",
+    "top",
+    "left",
+    "front",
+    "bottom",
+    "right",
+    "back"
+};
 ViewInfo viewInfos[MAX_VIEWS] = {
     { { -2, -2, 2 }, 15, -30, 45 },
     { { 0, 0, 0 }, 18, 0, 0 },
     { { 0, 0, 0 }, 18, 0, 0 },
     { { 0, 0, 0 }, 18, 0, 0 }
 };
-int draggingView = -1;
-static bool initialized = false;
-static float viewPosOnDragStart[2] = { 0, 0 };
-int dragMouseX, dragMouseY;
 
 // Prototypes
 static void viewDrawCallback(const ImDrawList* parent_list, const ImDrawCmd* cmd);
@@ -145,15 +133,24 @@ void view_updateGUI(ViewType type, ViewLayout layout, int viewIndex)
     if (ImGui::IsMouseHoveringWindow())
     {
         ImGuiIO& io = ImGui::GetIO();
-        if (io.MouseWheel < -0.1f)
+        if (pView->type != ViewType::Perspective)
         {
-            pView->zoomLevel =
-                std::max(0, pView->zoomLevel - 1);
-        }
-        else if (io.MouseWheel > 0.1f)
-        {
-            pView->zoomLevel =
-                std::min(MAX_ZOOM_LEVELS - 1, pView->zoomLevel + 1);
+            if (io.MouseWheel < -0.1f)
+            {
+                pView->zoomLevel =
+                    std::max(0, pView->zoomLevel - 1);
+
+                document.json["editor"]["views"][VIEW_TYPE_TO_NAME[viewIndex]]["zoom"] = pView->zoomLevel;
+                document.dirty = true;
+            }
+            else if (io.MouseWheel > 0.1f)
+            {
+                pView->zoomLevel =
+                    std::min(MAX_ZOOM_LEVELS - 1, pView->zoomLevel + 1);
+
+                document.json["editor"]["views"][VIEW_TYPE_TO_NAME[viewIndex]]["zoom"] = pView->zoomLevel;
+                document.dirty = true;
+            }
         }
 
         if (ImGui::IsMouseClicked(2))
@@ -173,6 +170,16 @@ void view_updateGUI(ViewType type, ViewLayout layout, int viewIndex)
         }
     }
 
+    if (ImGui::IsMouseReleased(2) && draggingView == viewIndex)
+    {
+        draggingView = -1;
+        if (pView->type == ViewType::Perspective)
+        {
+            ImGui::SetMouseCursor(ImGuiMouseCursor_Arrow);
+            updateEachFrame = false;
+        }
+    }
+
     if (draggingView == viewIndex)
     {
         if (viewInfos[viewIndex].type == ViewType::Perspective)
@@ -181,6 +188,8 @@ void view_updateGUI(ViewType type, ViewLayout layout, int viewIndex)
             SDL_GetMouseState(&mouseDeltaX, &mouseDeltaY);
             mouseDeltaX -= dragMouseX;
             mouseDeltaY -= dragMouseY;
+
+            bool dirty = mouseDeltaX || mouseDeltaY;
 
             pView->angleZ += (float)mouseDeltaX * 0.3f;
             pView->angleZ = std::fmodf(viewInfos[viewIndex].angleZ, 360.0f);
@@ -203,30 +212,48 @@ void view_updateGUI(ViewType type, ViewLayout layout, int viewIndex)
                 pView->position[0] += front[0] * 5.0f * io.DeltaTime;
                 pView->position[1] += front[1] * 5.0f * io.DeltaTime;
                 pView->position[2] += front[2] * 5.0f * io.DeltaTime;
+                dirty = true;
             }
             if (io.KeysDown[SDL_SCANCODE_S])
             {
                 pView->position[0] -= front[0] * 5.0f * io.DeltaTime;
                 pView->position[1] -= front[1] * 5.0f * io.DeltaTime;
                 pView->position[2] -= front[2] * 5.0f * io.DeltaTime;
+                dirty = true;
             }
             if (io.KeysDown[SDL_SCANCODE_D])
             {
                 pView->position[0] += right[0] * 5.0f * io.DeltaTime;
                 pView->position[1] += right[1] * 5.0f * io.DeltaTime;
+                dirty = true;
             }
             if (io.KeysDown[SDL_SCANCODE_A])
             {
                 pView->position[0] -= right[0] * 5.0f * io.DeltaTime;
                 pView->position[1] -= right[1] * 5.0f * io.DeltaTime;
+                dirty = true;
             }
             if (io.KeysDown[SDL_SCANCODE_E])
             {
                 pView->position[2] += 5.0f * io.DeltaTime;
+                dirty = true;
             }
             if (io.KeysDown[SDL_SCANCODE_Q])
             {
                 pView->position[2] -= 5.0f * io.DeltaTime;
+                dirty = true;
+            }
+
+            if (dirty)
+            {
+                document.json["editor"]["views"][VIEW_TYPE_TO_NAME[viewIndex]]["position"]["x"] = pView->position[0];
+                document.json["editor"]["views"][VIEW_TYPE_TO_NAME[viewIndex]]["position"]["y"] = pView->position[1];
+                document.json["editor"]["views"][VIEW_TYPE_TO_NAME[viewIndex]]["position"]["z"] = pView->position[2];
+
+                document.json["editor"]["views"][VIEW_TYPE_TO_NAME[viewIndex]]["angleX"] = pView->angleX;
+                document.json["editor"]["views"][VIEW_TYPE_TO_NAME[viewIndex]]["angleZ"] = pView->angleZ;
+
+                document.dirty = true;
             }
 
             SDL_WarpMouseInWindow(NULL, dragMouseX, dragMouseY);
@@ -235,18 +262,18 @@ void view_updateGUI(ViewType type, ViewLayout layout, int viewIndex)
         else
         {
             auto dragDelta = ImGui::GetMouseDragDelta(2);
+            bool dirty = dragDelta.x || dragDelta.y;
+
             pView->position[0] = viewPosOnDragStart[0] - dragDelta.x / ZOOM_LEVELS[pView->zoomLevel];
             pView->position[1] = viewPosOnDragStart[1] - dragDelta.y / ZOOM_LEVELS[pView->zoomLevel];
-        }
-    }
 
-    if (ImGui::IsMouseReleased(2) && draggingView == viewIndex)
-    {
-        draggingView = -1;
-        if (pView->type == ViewType::Perspective)
-        {
-            ImGui::SetMouseCursor(ImGuiMouseCursor_Arrow);
-            updateEachFrame = false;
+            if (dirty)
+            {
+                document.json["editor"]["views"][VIEW_TYPE_TO_NAME[viewIndex]]["position"]["x"] = pView->position[0];
+                document.json["editor"]["views"][VIEW_TYPE_TO_NAME[viewIndex]]["position"]["y"] = pView->position[1];
+
+                document.dirty = true;
+            }
         }
     }
 
@@ -256,9 +283,26 @@ void view_updateGUI(ViewType type, ViewLayout layout, int viewIndex)
     pView->w = w;
     pView->h = h;
     pView->index = viewIndex;
+
     ImGui::GetWindowDrawList()->AddCallback(viewDrawCallback, pView);
+    ImGui::Text("%0.2f, %0.2f, %i", pView->position[0], pView->position[1], pView->zoomLevel);
 
     ImGui::End();
+}
+
+void view_load()
+{
+    for (int i = 0; i < MAX_VIEWS; ++i)
+    {
+        auto pView = viewInfos + i;
+
+        pView->position[0] = document.json["editor"]["views"][VIEW_TYPE_TO_NAME[i]]["position"]["x"].asFloat();
+        pView->position[1] = document.json["editor"]["views"][VIEW_TYPE_TO_NAME[i]]["position"]["y"].asFloat();
+        pView->position[2] = document.json["editor"]["views"][VIEW_TYPE_TO_NAME[i]]["position"]["z"].asFloat();
+        pView->angleX = document.json["editor"]["views"][VIEW_TYPE_TO_NAME[i]]["angleX"].asFloat();
+        pView->angleZ = document.json["editor"]["views"][VIEW_TYPE_TO_NAME[i]]["angleZ"].asFloat();
+        pView->zoomLevel = document.json["editor"]["views"][VIEW_TYPE_TO_NAME[i]]["zoom"].asInt();
+    }
 }
 
 static void initialize()

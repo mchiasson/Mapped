@@ -6,6 +6,7 @@
 #include "imgui.h"
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h"
+#include "config.h"
 #include <stdio.h>
 #include <SDL.h>
 
@@ -96,6 +97,8 @@ int main()
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
+    editor_init();
+
     // Main loop
     while (!done)
     {
@@ -105,14 +108,12 @@ int main()
         // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
         // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
         SDL_Event event;
-        //bool updateNextFrame = false;
-        //bool updateEachFrame = false;
 
         int (*sdlEventCall)(SDL_Event * event) = SDL_WaitEvent;
 
         if (updateNextFrame || updateEachFrame)
         {
-            updateNextFrame = false;
+            if (updateNextFrame) --updateNextFrame;
             while (SDL_PollEvent(&event))
             {
                 ImGui_ImplSDL2_ProcessEvent(&event);
@@ -198,6 +199,8 @@ int main()
         // Swap
         SDL_GL_SwapWindow(window);
     }
+
+    config_save();
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
