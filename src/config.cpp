@@ -97,12 +97,17 @@ void config_save()
     // Window pos/dim/maximize
     SDL_Window* pWindow = SDL_GL_GetCurrentWindow();
     Json::Value window;
+    bool maximized = (SDL_GetWindowFlags(pWindow) & SDL_WINDOW_MAXIMIZED) ? true : false;
+    if (maximized)
+    {
+        SDL_RestoreWindow(pWindow);
+    }
     int x, y;
     int w, h;
     SDL_GetWindowPosition(pWindow, &x, &y);
     SDL_GetWindowSize(pWindow, &w, &h);
 
-    window["maximized"] = (SDL_GetWindowFlags(pWindow) & SDL_WINDOW_MAXIMIZED) ? true : false;
+    window["maximized"] = maximized;
     window["x"] = x;
     window["y"] = y;
     window["width"] = w;
