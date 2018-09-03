@@ -90,6 +90,9 @@ list(APPEND srcthirdparty
 list(APPEND includes PUBLIC ./thirdparty/tinyfiledialogs/)
 list(APPEND srcthirdparty ./thirdparty/tinyfiledialogs/tinyfiledialogs.c)
 
+# STB
+list(APPEND includes PUBLIC ./thirdparty/stb/)
+
 # MapEditor.exe, use WinMain on Windows
 source_group("thirdparty" FILES ${srcthirdparty})
 source_group("editor" FILES ${srcfiles})

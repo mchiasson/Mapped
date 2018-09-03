@@ -4,10 +4,10 @@
 #include "toolBar.h"
 #include "properties.h"
 #include "view.h"
-#include "models.h"
 #include "layers.h"
 #include "editor.h"
 #include "config.h"
+#include "library.h"
 
 #include <tinyfiledialogs.h>
 
@@ -38,7 +38,7 @@ void editor_updateGUI()
     toolBar_updateGUI();
     properties_updateGUI();
     layers_updateGUI();
-    models_updateGUI();
+    library_updateGUI();
 
     // Prepare the data
     
@@ -139,6 +139,7 @@ void editor_new()
     document.json["library"] = library;
     document.json["map"] = map;
 
+    library_load();
     view_load();
 }
 
@@ -176,6 +177,7 @@ static void open(const std::string& filename)
 
     addRecent(document.filename);
 
+    library_load();
     view_load();
 }
 

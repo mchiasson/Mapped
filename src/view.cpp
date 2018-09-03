@@ -2,6 +2,7 @@
 #include "globals.h"
 #include "math_helper.h"
 #include "rendering.h"
+#include "library.h"
 
 #include <imgui.h>
 #include <stdio.h>
@@ -329,6 +330,7 @@ static void initialize()
         "{\n"
         "    Out_Color = Frag_Color;\n"
         "}\n");
+    glUseProgram(shader_grid2D.program);
     shader_grid2D.uniform_worldMtx = glGetUniformLocation(shader_grid2D.program, "WorldMtx");
     shader_grid2D.uniform_projMtx = glGetUniformLocation(shader_grid2D.program, "ProjMtx");
     shader_grid2D.attrib_position = glGetAttribLocation(shader_grid2D.program, "Position");
@@ -352,6 +354,7 @@ static void initialize()
         "{\n"
         "    Out_Color = Frag_Color;\n"
         "}\n");
+    glUseProgram(shader_grid3D.program);
     shader_grid3D.uniform_projMtx = glGetUniformLocation(shader_grid3D.program, "ProjMtx");
     shader_grid3D.attrib_position = glGetAttribLocation(shader_grid3D.program, "Position");
     shader_grid3D.attrib_color = glGetAttribLocation(shader_grid3D.program, "Color");
@@ -464,6 +467,43 @@ static void viewDrawCallback(const ImDrawList* parent_list, const ImDrawCmd* cmd
         createPerspectiveFieldOfView(90, W / H, 0.1f, 1000.0f, projMat);
         mulMatrix(viewMat, projMat, viewProjMat);
 
+        // Draw 3D models
+        glEnable(GL_DEPTH_TEST);
+        glDepthMask(GL_TRUE);
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
+        
+        glUseProgram(meshShader.program);
+        glUniformMatrix4fv(meshShader.uniform_projMtx, 1, GL_FALSE, &viewProjMat[0][0]);
+
+        for (int i = 0; i < (int)document.json["map"].size(); ++i)
+        {
+            auto jsonObj = document.json["map"][i];
+            auto model = library_getModel(jsonObj["modelId"].asUInt64());
+
+            const float world_matrix[4][4] = {
+                { 1, 0, 0, 0 },
+                { 0, 1, 0, 0 },
+                { 0, 0, 1, 0 },
+                { jsonObj["position"]["x"].asFloat(), jsonObj["position"]["y"].asFloat(), jsonObj["position"]["z"].asFloat(), 1 }
+            };
+            glUniformMatrix4fv(meshShader.uniform_worldMtx, 1, GL_FALSE, &world_matrix[0][0]);
+
+            for (int j = 0; j < model.count; ++j)
+            {
+                auto pMesh = model.meshes + j;
+                glBindVertexArray(pMesh->vao);
+                glBindBuffer(GL_ARRAY_BUFFER, pMesh->vbo);
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pMesh->ibo);
+                glDrawElements(GL_TRIANGLES, pMesh->elementCount, pMesh->elementType, (const void*)(uintptr_t)(0));
+            }
+        }
+
+        // Draw Grid
+        glEnable(GL_DEPTH_TEST);
+        glDepthMask(GL_FALSE);
+        glDisable(GL_CULL_FACE);
+
         glUseProgram(shader_grid3D.program);
         glUniformMatrix4fv(shader_grid3D.uniform_projMtx, 1, GL_FALSE, &viewProjMat[0][0]);
 
@@ -471,11 +511,6 @@ static void viewDrawCallback(const ImDrawList* parent_list, const ImDrawCmd* cmd
         glBindVertexArray(gridMeshes[0].vao);
         glBindBuffer(GL_ARRAY_BUFFER, gridMeshes[0].vbo);
         glDrawArrays(GL_LINES, 0, GRID_2D_SIZE * 2 * 2);
-
-        //// Absolute 0 guides
-        //glBindVertexArray(mesh_grid0.vao);
-        //glBindBuffer(GL_ARRAY_BUFFER, mesh_grid0.vbo);
-        //glDrawArrays(GL_LINES, 0, GRID_2D_SIZE * 2 * 2);
     }
     else
     {
@@ -533,9 +568,6 @@ static void viewDrawCallback(const ImDrawList* parent_list, const ImDrawCmd* cmd
         glBindVertexArray(gridMeshes[3].vao);
         glBindBuffer(GL_ARRAY_BUFFER, gridMeshes[3].vbo);
         glDrawArrays(GL_LINES, 0, GRID_2D_SIZE * 2 * 2);
-
-        //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh_grid1.ibo);
-        //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, (const void*)(uintptr_t)(0));
     }
 
     restoreGLStates(&glStates);
