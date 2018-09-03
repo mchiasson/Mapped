@@ -35,6 +35,12 @@ static std::string getFilename()
         return "./config.json";
     }
 }
+#else
+static std::string getFilename()
+{
+    // Try local..
+    return "./config.json";
+}
 #endif
 
 void config_load()
