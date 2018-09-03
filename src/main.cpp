@@ -105,7 +105,29 @@ int main()
         // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
         // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
         SDL_Event event;
-        if (SDL_WaitEvent(&event))
+        //bool updateNextFrame = false;
+        //bool updateEachFrame = false;
+
+        int (*sdlEventCall)(SDL_Event * event) = SDL_WaitEvent;
+
+        if (updateNextFrame || updateEachFrame)
+        {
+            updateNextFrame = false;
+            while (SDL_PollEvent(&event))
+            {
+                ImGui_ImplSDL2_ProcessEvent(&event);
+                if (event.type == SDL_QUIT)
+                    done = true;
+                if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
+                    done = true;
+                if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
+                {
+                    width = event.window.data1;
+                    height = event.window.data2;
+                }
+            }
+        }
+        else if (SDL_WaitEvent(&event))
         {
             ImGui_ImplSDL2_ProcessEvent(&event);
             if (event.type == SDL_QUIT)

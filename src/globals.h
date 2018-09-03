@@ -6,3 +6,6 @@ extern bool isFullView;
 
 extern int width;
 extern int height;
+
+extern bool updateNextFrame;
+extern bool updateEachFrame;

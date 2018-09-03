@@ -1,3 +1,6 @@
+#ifndef VIEW_H_INCLUDED
+#define VIEW_H_INCLUDED
+
 enum class ViewType : int
 {
     Perspective = 0,
@@ -16,3 +19,5 @@ enum class ViewLayout : int
 };
 
 void view_updateGUI(ViewType type, ViewLayout layout, int viewIndex);
+
+#endif
