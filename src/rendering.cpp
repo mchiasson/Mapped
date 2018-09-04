@@ -1,7 +1,10 @@
 #include "rendering.h"
 
-#include <stdio.h>
 #include <imgui.h>
+#include <tinyfiledialogs.h>
+
+#include <stdio.h>
+#include <string>
 
 void saveGLStates(GLStates* pStates)
 {
@@ -65,6 +68,7 @@ static bool CheckShader(GLuint handle, const char* desc)
         buf.resize((int)(log_length + 1));
         glGetShaderInfoLog(handle, log_length, NULL, (GLchar*)buf.begin());
         fprintf(stderr, "%s\n", buf.begin());
+        tinyfd_messageBox("Check Shader", (std::string("Failed to build shader") + buf.begin()).c_str(), "ok", "error", 0);
     }
     return status == GL_TRUE;
 }
@@ -82,6 +86,7 @@ static bool CheckProgram(GLuint handle, const char* desc)
         buf.resize((int)(log_length + 1));
         glGetProgramInfoLog(handle, log_length, NULL, (GLchar*)buf.begin());
         fprintf(stderr, "%s\n", buf.begin());
+        tinyfd_messageBox("Check Program", (std::string("Failed to build shader") + buf.begin()).c_str(), "ok", "error", 0);
     }
     return status == GL_TRUE;
 }

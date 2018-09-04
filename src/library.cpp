@@ -59,22 +59,26 @@ static void initialize()
         "out vec2 Frag_TexCoord;\n"
         "void main()\n"
         "{\n"
-        "    Frag_Normal = normalize((WorldMtx * vec4(Normal.xyz, 1)).xyz);\n"
+        "    mat3 normalMatrix = mat3(WorldMtx);\n"
+        "    Frag_Normal = normalize(normalMatrix * Normal);\n"
         "    Frag_Color = Color;\n"
         "    Frag_TexCoord = TexCoord;\n"
         "    vec4 worldPos = WorldMtx * vec4(Position.xyz,1);\n"
         "    gl_Position = ProjMtx * worldPos;\n"
         "}\n"
         ,
+        "uniform sampler2D Texture;\n"
         "in vec3 Frag_Normal;\n"
         "in vec4 Frag_Color;\n"
         "in vec2 Frag_TexCoord;\n"
         "out vec4 Out_Color;\n"
         "void main()\n"
         "{\n"
-        "    Out_Color = Frag_Color * mix(0.7, 1.0, Frag_Normal.z * 0.5 + 0.5) * mix(0.8, 1.0, abs(Frag_Normal.x));\n"
+        "    float dirAO = abs(Frag_Normal.x);\n"
+        "    Out_Color = texture(Texture, Frag_TexCoord.st) * Frag_Color * mix(0.7, 1.0, Frag_Normal.z * 0.5 + 0.5) * mix(0.8, 1.0, abs(Frag_Normal.x));\n"
         "}\n");
     glUseProgram(meshShader.program);
+    meshShader.uniform_texture = glGetUniformLocation(meshShader.program, "Texture");
     meshShader.uniform_worldMtx = glGetUniformLocation(meshShader.program, "WorldMtx");
     meshShader.uniform_projMtx = glGetUniformLocation(meshShader.program, "ProjMtx");
     meshShader.attrib_position = glGetAttribLocation(meshShader.program, "Position");
@@ -85,10 +89,8 @@ static void initialize()
     initialized = true;
 }
 
-static GLuint loadTexture(const std::string& filename)
+static GLuint loadTexture(const std::string& path)
 {
-    auto path = document.filename.substr(0, document.filename.find_last_of("/\\") + 1) + filename;
-
     auto it = textures.find(path);
     if (it != textures.end()) return it->second;
 
@@ -128,6 +130,7 @@ static Model loadModel(const std::string& filename, float scale)
         aiProcess_GenNormals |
         aiProcess_PreTransformVertices |
         aiProcess_JoinIdenticalVertices |
+        aiProcess_FlipUVs |
         aiProcess_SortByPType/* |
         aiProcess_GlobalScale*/);
 
@@ -138,13 +141,39 @@ static Model loadModel(const std::string& filename, float scale)
     }
 
     Model model;
-    model.count = (int)pScene->mNumMeshes;
-    model.meshes = new Mesh[model.count];
 
-    for (int i = 0; i < model.count; ++i)
+    // Materials
+    model.materialCount = (int)pScene->mNumMaterials;
+    model.materials = new Material[model.materialCount];
+    for (int i = 0; i < model.materialCount; ++i)
+    {
+        auto pMaterial = model.materials + i;
+        auto pAssMat = pScene->mMaterials[i];
+
+        aiString texturePath;
+        auto ret = pAssMat->GetTexture(aiTextureType::aiTextureType_DIFFUSE, 0, &texturePath);
+        if (ret == aiReturn_SUCCESS)
+        {
+            std::string texName = texturePath.C_Str();
+            texName = texName.substr(texName.find_last_of("\\/") + 1);
+            std::string strPath = path.substr(0, path.find_last_of("/\\") + 1) + texName;
+            pMaterial->diffuse = loadTexture(strPath);
+        }
+        else
+        {
+            //TODO: Use white texture
+        }
+    }
+
+    // Meshes
+    model.meshCount = (int)pScene->mNumMeshes;
+    model.meshes = new Mesh[model.meshCount];
+    for (int i = 0; i < model.meshCount; ++i)
     {
         auto pMesh = model.meshes + i;
         auto pAssMesh = pScene->mMeshes[i];
+
+        pMesh->pMaterial = model.materials + pAssMesh->mMaterialIndex;
 
         if (pAssMesh->mNumVertices == 0)
         {
@@ -164,7 +193,9 @@ static Model loadModel(const std::string& filename, float scale)
         for (int i = 0; i < (int)pAssMesh->mNumVertices; ++i)
         {
             auto pVertex = vertices + i;
-            memcpy(pVertex->normal, pAssMesh->mNormals + i, sizeof(float) * 3);
+            pVertex->normal[0] = pAssMesh->mNormals[i].x;
+            pVertex->normal[1] = -pAssMesh->mNormals[i].z;
+            pVertex->normal[2] = pAssMesh->mNormals[i].y;
         }
         if (pAssMesh->HasVertexColors(0))
         {
@@ -262,26 +293,23 @@ void library_load()
     }
     textures.clear();
 
-    //for (const auto& kv : models)
-    //{
-    //    if (kv.second.thumbnail) glDeleteTextures(1, &kv.second.thumbnail);
-    //}
-    //models.clear();
+    for (const auto& kv : models)
+    {
+        delete[] kv.second.materials;
+        delete[] kv.second.meshes;
+    }
+    models.clear();
 
     const auto& jsonLibrary = document.json["library"];
     for (int i = 0; i < (int)jsonLibrary.size(); ++i)
     {
         const auto& jsonModel = jsonLibrary[i];
-        //Model model;
-        //model.id = jsonModel["id"].asUInt64();
-        //model.diffuse = loadTexture(jsonModel["diffuse"].asString());
-        //model.thumbnail = 0;
 
         auto id = jsonModel["id"].asUInt64();
 
         Thumbnail thumbnail;
         thumbnail.name = jsonModel["name"].asString();
-        thumbnail.thumbnail = loadTexture(jsonModel["diffuse"].asString());
+        thumbnail.thumbnail = 0;
         thumbnails.push_back(thumbnail);
 
         models[id] = loadModel(jsonModel["filename"].asString(), jsonModel["scale"].asFloat());

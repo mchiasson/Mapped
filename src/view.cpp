@@ -489,9 +489,15 @@ static void viewDrawCallback(const ImDrawList* parent_list, const ImDrawCmd* cmd
             };
             glUniformMatrix4fv(meshShader.uniform_worldMtx, 1, GL_FALSE, &world_matrix[0][0]);
 
-            for (int j = 0; j < model.count; ++j)
+            for (int j = 0; j < model.meshCount; ++j)
             {
                 auto pMesh = model.meshes + j;
+
+                glUniform1i(meshShader.uniform_texture, 0);
+#ifdef GL_SAMPLER_BINDING
+                glBindSampler(0, 0); // We use combined texture/sampler state. Applications using GL 3.3 may set that otherwise.
+#endif
+                glBindTexture(GL_TEXTURE_2D, pMesh->pMaterial->diffuse);
                 glBindVertexArray(pMesh->vao);
                 glBindBuffer(GL_ARRAY_BUFFER, pMesh->vbo);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pMesh->ibo);
