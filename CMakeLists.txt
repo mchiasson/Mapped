@@ -8,6 +8,14 @@ endif()
 # Setup modules path
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
 
+# Setup Hunter cmake package manager
+include(HunterGate)
+HunterGate(
+    URL "https://github.com/ruslo/hunter/archive/v0.23.24.tar.gz"
+    SHA1 "75f3b4507be7375370b25fa183c9c955e80ccf9c"
+    LOCAL # tells hunter to load cmake/Hunter/config.cmake
+)
+
 # Project name
 project(MapEditor)
 
@@ -22,12 +30,6 @@ if (CMAKE_BUILD_TYPE MATCHES Debug)
     add_definitions(-D_DEBUG)
 endif()
 
-#justwindowsthings
-if (WIN32)
-    add_definitions(-DNOMINMAX)
-    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-endif()
-
 # Project files
 file(GLOB srcfiles
     ./src/*.*
@@ -38,37 +40,22 @@ file(GLOB systemsFiles
 
 list(APPEND includes PUBLIC ./src/ ./src/systems/)
 
-# Dear imgui
-list(APPEND includes PUBLIC ./thirdparty/imgui/ ./thirdparty/imgui/examples/)
-list(APPEND srcthirdparty
-    ./src/imconfig.h
-    ./thirdparty/imgui/imgui_demo.cpp
-    ./thirdparty/imgui/imgui_draw.cpp
-    ./thirdparty/imgui/imgui_internal.h
-    ./thirdparty/imgui/imgui.cpp
-    ./thirdparty/imgui/imgui.h
-    ./thirdparty/imgui/stb_rect_pack.h
-    ./thirdparty/imgui/stb_textedit.h
-    ./thirdparty/imgui/stb_truetype.h
-    ./thirdparty/imgui/examples/imgui_impl_opengl3.cpp
-    ./thirdparty/imgui/examples/imgui_impl_opengl3.h
-    ./thirdparty/imgui/examples/imgui_impl_sdl.cpp
-    ./thirdparty/imgui/examples/imgui_impl_sdl.h
-)
+# Dear imgui (https://docs.hunter.sh/en/latest/packages/pkg/imgui.html)
+hunter_add_package(imgui)
+find_package(imgui CONFIG REQUIRED)
+list(APPEND libs imgui::imgui)
 
-# SDL
-set(HAVE_LIBC ON)
-add_subdirectory(./thirdparty/SDL/)
-list(APPEND libs SDL2-static)
-list(APPEND includes PUBLIC ./thirdparty/SDL/include/)
+# SDL2 (https://docs.hunter.sh/en/latest/packages/pkg/SDL2.html)
+hunter_add_package(SDL2)
+find_package(SDL2 CONFIG REQUIRED)
+list(APPEND libs SDL2::SDL2 SDL2::SDL2main)
 
 # OpenGL
 find_package(OpenGL REQUIRED)
-list(APPEND includes PUBLIC ${OPENGL_INCLUDE_DIR})
-list(APPEND libs ${OPENGL_LIBRARIES})
+list(APPEND libs OpenGL::GL)
 
 # assimp
-set(BUILD_SHARED_LIBS OFF)
+option(BUILD_SHARED_LIBS "Disabling Shared libraries." OFF)
 add_subdirectory(./thirdparty/assimp/)
 list(APPEND libs assimp)
 
@@ -76,22 +63,19 @@ list(APPEND libs assimp)
 list(APPEND includes PUBLIC ./thirdparty/gl3w/include/)
 list(APPEND srcthirdparty ./thirdparty/gl3w/src/gl3w.c)
 
-# jsoncpp
-list(APPEND includes PUBLIC ./thirdparty/jsoncpp/include/)
-list(APPEND srcthirdparty
-    ./thirdparty/jsoncpp/src/lib_json/json_reader.cpp
-    ./thirdparty/jsoncpp/src/lib_json/json_tool.h
-    ./thirdparty/jsoncpp/src/lib_json/json_value.cpp
-    ./thirdparty/jsoncpp/src/lib_json/json_valueiterator.inl
-    ./thirdparty/jsoncpp/src/lib_json/json_writer.cpp
-)
+# jsoncpp (https://docs.hunter.sh/en/latest/packages/pkg/jsoncpp.html)
+hunter_add_package(jsoncpp)
+find_package(jsoncpp CONFIG REQUIRED)
+list(APPEND libs jsoncpp_lib_static)
 
 # tinyfiledialogs
 list(APPEND includes PUBLIC ./thirdparty/tinyfiledialogs/)
 list(APPEND srcthirdparty ./thirdparty/tinyfiledialogs/tinyfiledialogs.c)
 
-# STB
-list(APPEND includes PUBLIC ./thirdparty/stb/)
+# stb (https://docs.hunter.sh/en/latest/packages/pkg/stb.html)
+hunter_add_package(stb)
+find_package(stb CONFIG REQUIRED)
+list(APPEND libs stb::stb)
 
 # MapEditor.exe, use WinMain on Windows
 source_group("thirdparty" FILES ${srcthirdparty})
@@ -102,3 +86,9 @@ add_executable(MapEditor WIN32 ${srcfiles} ${systemsFiles} ${srcthirdparty})
 # Lib/Headers
 target_include_directories(MapEditor ${includes})
 target_link_libraries(MapEditor ${libs})
+
+#justwindowsthings
+if (WIN32)
+    target_compile_definitions(MapEditor PUBLIC -DNOMINMAX)
+    target_compile_definitions(MapEditor PUBLIC -D_CRT_SECURE_NO_WARNINGS)
+endif()
